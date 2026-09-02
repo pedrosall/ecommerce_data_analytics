@@ -1,0 +1,18 @@
+# Entornos y credenciales
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Datos pesados (no subimos CSVs grandes a GitHub)
+data/*.csv
+data/*.zip
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Power BI (el .pbix sí lo subiremos, pero evitamos temporales)
+*.pbix.bak
+
+# SO
+.DS_Store
