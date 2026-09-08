@@ -1,96 +1,96 @@
 # E-commerce Revenue & Customer Analytics
 
-Análisis end-to-end de un e-commerce brasileño real (dataset público Olist), construido con SQL como protagonista, Python como apoyo exploratorio, y Power BI para la capa de visualización de negocio.
+End-to-end analysis of a real Brazilian e-commerce business (public Olist dataset), built with SQL as the core tool, Python for exploratory support, and Power BI as the business-facing visualization layer.
 
 ## Business Problem
 
-La dirección de una empresa de e-commerce necesita entender dónde gana dinero, dónde lo pierde, y qué debería priorizar: ¿los clientes vuelven a comprar? ¿qué categorías son realmente rentables? ¿la logística afecta a la satisfacción del cliente? Este proyecto responde a esas preguntas con un pipeline analítico completo, desde datos crudos hasta un dashboard ejecutivo.
+The leadership of an e-commerce company needs to understand where it makes money, where it loses money, and what to prioritize: do customers come back? which categories are actually profitable? does logistics affect customer satisfaction? This project answers these questions through a complete analytics pipeline, from raw data to an executive dashboard.
 
 ## Dataset
 
-[Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — ~100.000 pedidos entre septiembre de 2016 y octubre de 2018, con información de clientes, productos, vendedores, pagos, reviews y geografía.
+[Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — ~100,000 orders between September 2016 and October 2018, including customer, product, seller, payment, review, and geolocation data.
 
-**Nota:** los archivos CSV no se incluyen en este repositorio por tamaño. Para reproducir el proyecto, descarga el dataset desde el enlace anterior y colócalo en la carpeta `data/`.
+**Note:** the CSV files are not included in this repository due to size. To reproduce the project, download the dataset from the link above and place it in the `data/` folder.
 
 ## Data Architecture
 
 ```
 CSV (Kaggle)
      ↓
-PostgreSQL — capa raw (réplica tipada de los CSV originales)
+PostgreSQL — raw layer (typed replica of the original CSVs)
      ↓
-PostgreSQL — capa analytics (modelo en estrella)
+PostgreSQL — analytics layer (star schema)
      ↓
-SQL Analysis (15 queries de negocio)
+SQL Analysis (15 business queries)
      ↓
-Python (EDA + visualizaciones de apoyo)
+Python (EDA + supporting visualizations)
      ↓
-Power BI (dashboard de 3 páginas)
+Power BI (3-page dashboard)
 ```
 
-### Modelo en estrella
+### Star Schema
 
-- **`fact_orders`** — grano: una línea de producto vendida. Incluye todos los pedidos (cualquier `order_status`), con `price`, `freight_value` y `delivery_time_days` calculado.
-- **`dim_customer`** — clientes, distinguiendo `customer_id` (por pedido) de `customer_unique_id` (persona real), clave para el análisis de recurrencia.
-- **`dim_product`** — productos con categoría traducida al inglés (con traducción manual documentada para 2 categorías sin traducción oficial).
-- **`dim_seller`** — vendedores.
-- **`dim_date`** — generada desde cero con `generate_series`, con columnas derivadas (año, mes, trimestre, fin de semana).
-- **`dim_review`** — reviews deduplicadas por pedido (547 pedidos tenían más de una review; se conserva la más reciente vía `ROW_NUMBER()`).
+- **`fact_orders`** — grain: one product line item sold. Includes all orders (any `order_status`), with `price`, `freight_value`, and a calculated `delivery_time_days`.
+- **`dim_customer`** — customers, distinguishing `customer_id` (per order) from `customer_unique_id` (the actual person), key for repeat-purchase analysis.
+- **`dim_product`** — products with category translated into English (including a manual, documented translation for 2 categories missing an official one).
+- **`dim_seller`** — sellers.
+- **`dim_date`** — generated from scratch with `generate_series`, with derived columns (year, month, quarter, weekend flag).
+- **`dim_review`** — reviews deduplicated per order (547 orders had more than one review; the most recent one is kept via `ROW_NUMBER()`).
 
 ## SQL Analysis
 
-15 queries de negocio organizadas en 4 bloques (`sql/07` a `sql/10`), cubriendo desde SQL básico hasta window functions:
+15 business queries organized into 4 blocks (`sql/07` to `sql/10`), covering everything from basic SQL to window functions:
 
-- **Básico:** `SELECT`, `WHERE`, `GROUP BY`, `CASE WHEN`
-- **Intermedio:** `JOIN`, CTEs (`WITH`), `HAVING`, subqueries
-- **Avanzado:** window functions — `LAG()`, `RANK()`, `ROW_NUMBER()`, `PERCENTILE_CONT()`
+- **Basic:** `SELECT`, `WHERE`, `GROUP BY`, `CASE WHEN`
+- **Intermediate:** `JOIN`, CTEs (`WITH`), `HAVING`, subqueries
+- **Advanced:** window functions — `LAG()`, `RANK()`, `ROW_NUMBER()`, `PERCENTILE_CONT()`
 
-Bloques de análisis: **Revenue** (evolución mensual, top categorías, top estados, estacionalidad), **Customers** (nuevos vs recurrentes, tasa de repetición, tiempo entre pedidos, CLV aproximado), **Products** (volumen, ticket medio, cruce volumen/valor, reviews por categoría), **Operations** (estadísticas de entrega, entrega vs review score, ranking de estados).
+Analysis blocks: **Revenue** (monthly evolution, top categories, top states, seasonality), **Customers** (new vs returning, repeat rate, time between orders, approximate CLV), **Products** (volume, average ticket, volume/value crossover, reviews by category), **Operations** (delivery time statistics, delivery time vs review score, state ranking).
 
 ## Python Analysis
 
-Python se usó exclusivamente para EDA (calidad de datos: nulos, duplicados, integridad referencial, consistencia) y para 3 visualizaciones de apoyo — nunca como motor de análisis. Ver `notebooks/exploratory_analysis.ipynb`.
+Python was used exclusively for EDA (data quality: nulls, duplicates, referential integrity, consistency) and for 3 supporting visualizations — never as the main analysis engine. See `notebooks/exploratory_analysis.ipynb`.
 
 ## Power BI Dashboard
 
-Dashboard de 3 páginas conectado directamente a PostgreSQL:
+A 3-page dashboard connected directly to PostgreSQL:
 
-1. **Executive Overview** — 7 KPIs (Revenue, Orders, Customers, AOV, Repeat Rate, Avg. Delivery Time, Avg. Review Score) + evolución temporal.
-2. **Customer & Product Analytics** — filtros por fecha/región/categoría, revenue por categoría (top 10), clientes nuevos vs recurrentes.
-3. **Operations** — relación entre tiempo de entrega y review score, ranking de estados por tiempo de entrega.
+1. **Executive Overview** — 7 KPIs (Revenue, Orders, Customers, AOV, Repeat Rate, Avg. Delivery Time, Avg. Review Score) + time evolution.
+2. **Customer & Product Analytics** — date/region/category filters, revenue by category (top 10), new vs returning customers.
+3. **Operations** — relationship between delivery time and review score, state ranking by delivery time.
 
 ## Key Findings
 
-1. **La retención es la principal oportunidad de crecimiento.** Solo el ~3% de los clientes reales (`customer_unique_id`) repite compra, y cuando lo hace, tarda de media 79 días en volver. El CLV aproximado (141,62€) es, en la práctica, casi el ticket de una única compra para la mayoría de la base de clientes.
+1. **Retention is the main growth opportunity.** Only ~3% of actual customers (`customer_unique_id`) make a repeat purchase, and when they do, it takes an average of 79 days to come back. The approximate CLV (€141.62) is, in practice, close to the value of a single purchase for most of the customer base.
 
-2. **Los retrasos en la entrega hunden la satisfacción a partir de un umbral crítico de 15 días.** El review score cae de forma moderada hasta ese punto (4,37 → 4,16 estrellas), pero se desploma con fuerza a partir de ahí (3,52 estrellas), casi el triple de caída que en los tramos anteriores.
+2. **Delivery delays sharply hurt satisfaction past a critical 15-day threshold.** Review scores decline moderately up to that point (4.37 → 4.16 stars), but drop sharply after it (3.52 stars) — nearly three times steeper than the previous stages.
 
-3. **El negocio está geográficamente muy concentrado, y de forma contradictoria con la logística.** São Paulo genera casi 3 veces más revenue que el segundo estado (Río de Janeiro) y disfruta además del mejor tiempo de entrega del país (8,3 días). Los estados de la región norte (Roraima, Amapá, Amazonas) combinan bajo revenue con los peores tiempos de entrega (26-28 días).
+3. **The business is heavily concentrated geographically, and at odds with logistics performance.** São Paulo generates almost 3 times more revenue than the second-highest state (Rio de Janeiro) and also enjoys the best delivery time in the country (8.3 days). Northern states (Roraima, Amapá, Amazonas) combine low revenue with the worst delivery times (26-28 days).
 
-4. **Hay categorías con alto volumen y bajo valor unitario, y viceversa.** `electronics` y `telephony` mueven volúmenes altos con tickets medios bajos (56-70€), mientras que `computers` tiene el ticket medio más alto del catálogo (1.099€) pero un volumen marginal (199 unidades).
+4. **There's a mismatch between volume and unit value across categories.** `electronics` and `telephony` move high volumes at low average tickets (€56-70), while `computers` has the highest average ticket in the catalog (€1,099) but marginal volume (199 units).
 
 ## Business Recommendations
 
-- **Priorizar campañas de retención** dirigidas a clientes de alto valor, dado el bajo porcentaje de recompra detectado.
-- **Investigar la cadena logística en las regiones norte del país**, donde los tiempos de entrega superan ampliamente la media nacional.
-- **Revisar la estrategia de pricing e inventario** en categorías de alto volumen y bajo ticket medio (`electronics`, `telephony`), y evaluar el potencial de crecimiento de categorías de alto valor y bajo volumen (`computers`).
-- **Establecer alertas operativas para pedidos que superen los 15 días** de tiempo de entrega estimado, dado el impacto desproporcionado en la satisfacción a partir de ese umbral.
+- **Prioritize retention campaigns** targeting high-value customers, given the low repeat-purchase rate detected.
+- **Investigate the logistics chain in the northern regions**, where delivery times far exceed the national average.
+- **Review pricing and inventory strategy** for high-volume/low-ticket categories (`electronics`, `telephony`), and assess growth potential in high-value/low-volume categories (`computers`).
+- **Set up operational alerts for orders exceeding 15 days** of estimated delivery time, given the disproportionate impact on satisfaction past that threshold.
 
 ## Tech Stack
 
-- **Base de datos:** PostgreSQL 16 (WSL/Ubuntu)
-- **SQL:** consultas analíticas, modelado dimensional, window functions
-- **Python:** pandas, matplotlib (EDA y visualización de apoyo)
+- **Database:** PostgreSQL 16 (WSL/Ubuntu)
+- **SQL:** analytical queries, dimensional modeling, window functions
+- **Python:** pandas, matplotlib (EDA and supporting visualizations)
 - **BI:** Power BI Desktop
-- **Control de versiones:** Git / GitHub
-- **Entorno de desarrollo:** VS Code + WSL2, DBeaver
+- **Version control:** Git / GitHub
+- **Development environment:** VS Code + WSL2, DBeaver
 
-## Estructura del repositorio
+## Repository Structure
 
 ```
 ecommerce-data-analytics/
 │
-├── data/                    # CSVs de Olist (no incluidos, ver Dataset)
+├── data/                    # Olist CSVs (not included, see Dataset)
 ├── sql/
 │   ├── 01_schema.sql
 │   ├── 02_staging_dim_date.sql
@@ -113,11 +113,11 @@ ecommerce-data-analytics/
 └── requirements.txt
 ```
 
-## Cómo reproducir el proyecto
+## How to Reproduce This Project
 
-1. Instalar PostgreSQL y crear una base de datos `ecommerce_db`.
-2. Descargar el dataset Olist en `data/`.
-3. Ejecutar los scripts de `sql/` en orden (01 a 11).
-4. Crear un entorno virtual e instalar `requirements.txt`.
-5. Configurar un archivo `.env` con las credenciales de conexión (ver `src/db_connection.py`).
-6. Abrir `powerbi/ecommerce_dashboard.pbix` y actualizar la conexión a tu instancia local de PostgreSQL.
+1. Install PostgreSQL and create an `ecommerce_db` database.
+2. Download the Olist dataset into `data/`.
+3. Run the scripts in `sql/` in order (01 to 11).
+4. Create a virtual environment and install `requirements.txt`.
+5. Set up a `.env` file with your connection credentials (see `src/db_connection.py`).
+6. Open `powerbi/ecommerce_dashboard.pbix` and update the connection to your local PostgreSQL instance.
